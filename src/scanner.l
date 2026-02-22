@@ -1,64 +1,56 @@
-
-/* definitions */
-
 %{
 #include <stdio.h>
 #include <stdlib.h>
 #include "tokendef.h"
 
- /* integers to track line and column numbers */
 int scancol = 1;
 int yycol = 1;
 int scanlineno = 1;
 
- /* char pointer to pass error messages to driver.c */
 char *yyerror;
 
- /* TODO: functions to update line and column numbers */
 void updateCol();
 void countLines();
 
- /* TODO: function to process a string literal */
 int processString();
 
 %}
 
+%option yylineno
+
+%x COMMENT
+
 integer         0|[1-9][0-9]*
-integerlead0    0[0-9]+
-character       '[^'\n]'
 
-string_lit      "\"([^\"\\\n]|\\\\[nt\"\\\\])*\""
+character       \'[^\'\n]\'
 
-untermstring    "\"([^"\n])*$" 
+string_lit      \"([^\"\\]|\\.)*\"
 
-comment         "//".*
-multlncomment   "/\\*([^*]|\\*+[^*/])*\\*+/"
-untermcomment   "/\\*([^*]|\\*+[^*/])*$"
+untermstring    \"([^\"\\\n]|\\.)*$
+
+comment         \/\/[^\n]*
+
+         
 
 identifier      [A-Za-z][A-Za-z0-9]*
-illidentifier   [^a-zA-Z][A-Za-z0-9]*
+illidentifier   [0-9][A-Za-z0-9]+
 
 newline         \n
-whitespace      [ \t\n]+
+whitespace      [ \t]+
 
-yylineno = 1;
+
 
 %%
 
- /* rules */
-
- /* KWD_s */
-
-"if"              { updateCol(); return KWD_IF; }
-"else"            { updateCol(); return KWD_ELSE; }
-"while"           { updateCol(); return KWD_WHILE; }
-"int"           { updateCol(); return KWD_INT; }
-"String"        { updateCol(); return KWD_STRING; }
-"char"          { updateCol(); return KWD_CHAR; }
+ "/*"           { BEGIN(COMMENT); countLines(); }
+if              { updateCol(); return KWD_IF; }
+else            { updateCol(); return KWD_ELSE; }
+while           { updateCol(); return KWD_WHILE; }
+int             { updateCol(); return KWD_INT; }
+String          { updateCol(); return KWD_STRING; }
+char            { updateCol(); return KWD_CHAR; }
 return          { updateCol(); return KWD_RETURN; }
 void            { updateCol(); return KWD_VOID; }
-
- /* Operators */
 
 "=="            { updateCol(); return OPER_EQ; }
 "!="            { updateCol(); return OPER_NEQ; }
@@ -85,29 +77,28 @@ void            { updateCol(); return KWD_VOID; }
 "}"             { updateCol(); return RCRLY_BRKT; }
 "("             { updateCol(); return LPAREN; }
 ")"             { updateCol(); return RPAREN; }
-","             { updateCol(); return COMMA; }     
-";"             { updateCol(); return SEMICLN; } 
+","             { updateCol(); return COMMA; }
+";"             { updateCol(); return SEMICLN; }
 "@"             { updateCol(); return OPER_AT; }
 
- /* Identifiers */
 {identifier}    { updateCol(); return ID;}
 {illidentifier} { updateCol(); yyerror = "Illegal identifier"; return ERROR;}
 
- /* Constants and Comments */
 
 {integer}       { updateCol(); return INTCONST; }
-{integerlead0}  { updateCol(); yyerror = "Integers cannot lead with 0"; return ERROR; }
 {character}     { updateCol(); return CHARCONST; }
-{comment}       { updateCol(); /* ignore */}
-{multlncomment} { countLines(); /* ignore */}
-{untermcomment} { updateCol(); yyerror = "Unterminated comment"; return ERROR; }
+{comment}       { updateCol(); /* ignore */ }
+<COMMENT>\*/    { countLines(); BEGIN(INITIAL); }
+<COMMENT>\r?\n     { scanlineno++; scancol = 1; }
+<COMMENT>.      { scancol++; }
+
+
 {string_lit}    { updateCol(); return processString(); }
 {untermstring}  { updateCol(); yyerror = "Unterminated string constant"; return ERROR; }
 
- /* Other */
 {newline}       { scanlineno++; scancol = 1; }
 {whitespace}    { updateCol(); /* ignore spaces/tabs */ }
-.               {return ILLEGAL_TOK;}
+.               { return ILLEGAL_TOK; }
 
 %%
 
