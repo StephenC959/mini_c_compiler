@@ -6,7 +6,6 @@
 int scancol = 1;
 int yycol = 1;
 int scanlineno = 1;
-
 char *yyerror;
 
 void updateCol();
@@ -16,11 +15,9 @@ int processString();
 
 %}
 
-%option yylineno
+yylineno = 1;
 
-%x COMMENT
-
-integer         0|[1-9][0-9]*
+integer         (0|[1-9][0-9]*)
 
 character       \'[^\'\n]\'
 
@@ -29,11 +26,11 @@ string_lit      \"([^\"\\]|\\.)*\"
 untermstring    \"([^\"\\\n]|\\.)*$
 
 comment         \/\/[^\n]*
-
-         
+multlncomment   \/\*([^*]|\*+[^*/])*\*+\/
+untermcomment   \/\*([^*]|\*+[^*/])*$          
 
 identifier      [A-Za-z][A-Za-z0-9]*
-illidentifier   [0-9][A-Za-z0-9]+
+illidentifier   [0-9]+[A-Za-z][A-Za-z0-9]*
 
 newline         \n
 whitespace      [ \t]+
@@ -42,7 +39,7 @@ whitespace      [ \t]+
 
 %%
 
- "/*"           { BEGIN(COMMENT); countLines(); }
+
 if              { updateCol(); return KWD_IF; }
 else            { updateCol(); return KWD_ELSE; }
 while           { updateCol(); return KWD_WHILE; }
@@ -81,22 +78,20 @@ void            { updateCol(); return KWD_VOID; }
 ";"             { updateCol(); return SEMICLN; }
 "@"             { updateCol(); return OPER_AT; }
 
-{identifier}    { updateCol(); return ID;}
 {illidentifier} { updateCol(); yyerror = "Illegal identifier"; return ERROR;}
-
-
+0[0-9]+         { updateCol(); yyerror = "Integers can not lead with 0"; return ERROR; }
+{identifier}    { updateCol(); return ID;}
 {integer}       { updateCol(); return INTCONST; }
 {character}     { updateCol(); return CHARCONST; }
 {comment}       { updateCol(); /* ignore */ }
-<COMMENT>\*/    { countLines(); BEGIN(INITIAL); }
-<COMMENT>\r?\n     { scanlineno++; scancol = 1; }
-<COMMENT>.      { scancol++; }
+{multlncomment} { countLines(); /* ignore */ }
+{untermcomment} { countLines(); yyerror = "Unterminated comment"; return ERROR; }
 
 
 {string_lit}    { updateCol(); return processString(); }
 {untermstring}  { updateCol(); yyerror = "Unterminated string constant"; return ERROR; }
 
-{newline}       { scanlineno++; scancol = 1; }
+{newline}       { countLines(); }
 {whitespace}    { updateCol(); /* ignore spaces/tabs */ }
 .               { return ILLEGAL_TOK; }
 
@@ -105,25 +100,14 @@ void            { updateCol(); return KWD_VOID; }
 /* user routines */
 
 void updateCol() {
-    for (int i = 0; i < yyleng; i++) {
-        if (yytext[i] == '\n') {
-            scancol = 1;      // reset column at newline
-            scanlineno++;     // increment line number
-        } else {
-            scancol++;        // increment column for every other character
-        }
-    }
+    yycol = scancol;
+    scancol += yyleng;
 }
 
 void countLines() {
-    for (int i = 0; i < yyleng; i++) {
-        if (yytext[i] == '\n') {
-            scanlineno++;     // increment line number
-            scancol = 1;      // reset column at line start
-        } else {
-            scancol++;        // increment column for other chars
-        }
-    }
+  
+    yylineno++;
+    scancol = 1;
 }
 
 int processString() {
@@ -140,6 +124,7 @@ int processString() {
                 case '"': *dest++ = '"'; break;
                 case '\\': *dest++ = '\\'; break;
                 default:
+                    updateCol();
                     yyerror = "Illegal escape sequence";
                     return ERROR;
             }
@@ -150,6 +135,6 @@ int processString() {
     }
 
     *dest = '\0';           // null-terminate the string
-    updateCol();            // update column position for the whole string
+    updateCol();
     return STRCONST;          // token to parser
 }
