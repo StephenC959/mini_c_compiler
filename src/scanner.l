@@ -32,7 +32,7 @@ untermcomment   \/\*([^*]|\*+[^*/])*$
 identifier      [A-Za-z][A-Za-z0-9]*
 illidentifier   [0-9]+[A-Za-z][A-Za-z0-9]*
 
-newline         \n
+newline         (\r\n|\n|\r)
 whitespace      [ \t]+
 
 
@@ -124,7 +124,7 @@ int processString() {
                 case '"': *dest++ = '"'; break;
                 case '\\': *dest++ = '\\'; break;
                 default:
-                    updateCol();
+                    yycol = scancol - (yyleng - i - 1);
                     yyerror = "Illegal escape sequence";
                     return ERROR;
             }
@@ -135,6 +135,5 @@ int processString() {
     }
 
     *dest = '\0';           // null-terminate the string
-    updateCol();
     return STRCONST;          // token to parser
 }

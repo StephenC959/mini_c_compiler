@@ -1,3 +1,2 @@
 " This \" is\\ an \t ok \n string"
-/* comment  
 printf("Hello world! \t \n \\ \b ");
