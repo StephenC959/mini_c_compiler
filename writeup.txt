@@ -1,0 +1,21 @@
+1. Stephen Cox, CS4318.252
+2. Solo, group member never responded
+3. I have made a test folder that has my .txt tests including the cases that were provided
+ test 1: legal identifier, illidentifier and integer test
+ test 2: something like the sample tests 
+ test 3: I tested multiline comments with multiline strings to make sure both errors appeared
+ test 4: string test and unterminated comment case
+ test 5: open ended string test
+ test 6: integer leading 0 test case
+ test 7: special characters and keywords
+ test 8: hard sample test
+
+ to run all in bash
+
+ for i in {1..8}; do
+   echo "===== Running test$i.txt ====="
+   ./obj/scanner ./test/test$i.txt || break
+   echo
+ done
+
+4. make was run in vscode remote wsl using ubuntu 24.04 incase there are errors

@@ -19,25 +19,29 @@ int processString();
 
 yylineno = 1;
 
-integer         (0|[1-9][0-9]*)
+integer         (0|[1-9][0-9]*)            // clean 0 integers
 
-character       \'[^\'\n]\'
+character       \'[^\'\n]\'                // character in the set not including ' and newline between ''
 
-string_lit      \"([^\"\\\n]|\\.)*\"
-stringmulti     \"([^\"\\]|\\.)*\"
-untermstring    \"([^\"\\\r\n]|\\.)*$ 
+string_lit      \"([^\"\\\n]|\\.)*\"       // 0 or more characters between the "" in the set not including newline, \, and "
+stringmulti     \"([^\"\\]|\\.)*\"         // same as string but it allows newline to catch the error
+untermstring    \"([^\"\\\r\n]|\\.)*$      // same as string unless read until the end of file
 
-comment         \/\/[^\n]*
-multlncomment   \/\*([^*]|\*+[^*/])*\*+\/
-untermcomment   \/\*([^*]|\*+[^*/])*$        
+comment         \/\/[^\n]*                 // "//" and any character after except newline
+multlncomment   \/\*([^*]|\*+[^*/])*\*+\/  // same as string but allows newlines and all characters between /**/
+untermcomment   \/\*([^*]|\*+[^*/])*$      // same as multiline comments but with finds eof instead of */  
 
-identifier      [A-Za-z][A-Za-z0-9]*
-illidentifier   [0-9]+[A-Za-z][A-Za-z0-9]*
+identifier      [A-Za-z][A-Za-z0-9]*       // a Upper or lowercase letter followed by 0 or more letters or numbers
+illidentifier   [0-9]+[A-Za-z][A-Za-z0-9]* // case where at least one number is followed by a letter and 0 or more combinations after
 
-newline         (\r\n|\n|\r)
-whitespace      [ \t]+
+newline         (\r\n|\n|\r)               // newline and windows escape case
+whitespace      [ \t]+                     // spaces and tabs
 
-
+/*  keywords top section:
+    1. special characters with returns defined in tokendef.h
+    2. rules when a definition is found by scanner
+    3. EXIT token breaks loop in driver.c and outputs error
+    NOTE: flex does not like comments in rules portion */
 
 %%
 
@@ -104,13 +108,17 @@ void              { updateCol(); return KWD_VOID; }
 /* user routines */
 
 void updateCol() {
-    yylineno = scanlineno; //update for multiline cases
-    yycol = scancol;
-    scancol += yyleng;
+    yylineno = scanlineno; // update for multiline cases
+    yycol = scancol;       // scanner column saved into yycol
+    scancol += yyleng;     // increment scanner col by token length
 }
 
+/*  function for multiline counting:
+    if scanner finds a newline character the it will increment scan line number,
+    keeps track of where the last line ended to calculate correct column on return. */
+
 void multiCountLines(){
-    yylineno = scanlineno;
+    yylineno = scanlineno;  
     scanlineno++;
     int i;
     charCount = 0;
@@ -130,6 +138,7 @@ void multiCountLines(){
     scancol = i - charCount;
 }
 
+// increment line and reset col
 void countLines() {
     yylineno = scanlineno;
     scanlineno++;
@@ -145,12 +154,12 @@ int processString() {
         if (src[i] == '\\') {  // escape sequence
             i++;
             switch (src[i]) {
-                case 'n': *dest++ = '\n'; break;
-                case 't': *dest++ = '\t'; break;
-                case '"': *dest++ = '"'; break;
-                case '\\': *dest++ = '\\'; break;
+                case 'n': *dest++ = '\n'; break;    // newline
+                case 't': *dest++ = '\t'; break;    // tab escape
+                case '"': *dest++ = '"'; break;     // "
+                case '\\': *dest++ = '\\'; break;   // \
                 default:
-                    yycol = scancol - (yyleng - i - 1);
+                    yycol = scancol - (yyleng - i - 1);   //find where \ is in the escape sequence
                     yyerror = "Illegal escape sequence";
                     return ERROR;
             }
@@ -160,6 +169,6 @@ int processString() {
         i++;
     }
 
-    *dest = '\0';           // null-terminate the string
+    *dest = '\0';             // null-terminate the string
     return STRCONST;          // token to parser
 }
