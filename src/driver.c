@@ -126,6 +126,9 @@ void printToken(const int tokenNum) {
     case ERROR:
       printf("<ERROR, %s> : (%d:%d)\n", yyerror, yylineno, yycol);
       break;
+    case EXIT:
+      printf("<ERROR, %s> : (%d:%d)\n", yyerror, yylineno, yycol);
+      return;
     default:
       printf("<ILLEGAL TOKEN, %s> : (%d:%d)\n", yytext, yylineno, yycol);
   }
@@ -142,6 +145,8 @@ int main(int argc,char **argv) {
   int ret = yylex();
   while (ret) {
     printToken(ret);
+    if(ret == EXIT)
+      break;
     ret = yylex();
   }
   if (infile) {

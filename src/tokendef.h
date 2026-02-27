@@ -51,6 +51,7 @@
 
 /* other */
 #define ERROR       289
-#define ILLEGAL_TOK 290
+#define EXIT        290
+#define ILLEGAL_TOK 291
 
 #endif //ifndef _TOKENDEF_H_
